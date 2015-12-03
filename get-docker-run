@@ -18,7 +18,7 @@ VOLUMES_FROM=$(echo "$INSPECT"|jq -r '"--volumes-from " + .HostConfig.VolumesFro
 LINKS=$(echo "$INSPECT"|jq -r '"--link " + .HostConfig.Links[]')
 DNS=$(echo "$INSPECT"|jq -r '"--dns " + .HostConfig.Dns[]')
 IMAGE=$(echo "$INSPECT"|jq -r '.Config.Image')
-}
+} 2>/dev/null
 
 [ $(echo "$INSPECT"|jq -r '.HostConfig.PublishAllPorts') == "true" ] && PUBLISHALL=' -P '
 
