@@ -1,0 +1,25 @@
+#!/bin/bash
+
+if [ "$(uname)" == "Darwin" ]; then
+  SED="$(which gsed)"
+else
+  SED="$(which sed)"
+fi
+
+CONTAINER=$1
+{
+INSPECT=$(docker inspect "$CONTAINER"|jq '.[0]')
+NAME=$(echo "$INSPECT"|jq -r '.Name'|$SED 's/^\///g')
+HOSTNAME=$(echo "$INSPECT"|jq -r '.Config.Hostname')
+BINDS=$(echo "$INSPECT"|jq -r '"-v \"" + .HostConfig.Binds[] + "\""')
+ENV=$(echo "$INSPECT"|jq -r '"-e \"" + .Config.Env[] + "\""')
+PORTS=$(echo "$INSPECT"|jq -r '.HostConfig.PortBindings|to_entries|map(" -p \(if .value[0].HostIp != "" then .value[0].HostIp + ":"  else "" end)\(.key)\(if .value[0].HostPort != "" then ":" + .value[0].HostPort else "" end)")|add'|$SED -r 's/\/(tcp|udp)//g'|$SED 's/null//g')
+VOLUMES_FROM=$(echo "$INSPECT"|jq -r '"--volumes-from " + .HostConfig.VolumesFrom[]')
+LINKS=$(echo "$INSPECT"|jq -r '"--link " + .HostConfig.Links[]')
+DNS=$(echo "$INSPECT"|jq -r '"--dns " + .HostConfig.Dns[]')
+IMAGE=$(echo "$INSPECT"|jq -r '.Config.Image')
+}
+
+[ $(echo "$INSPECT"|jq -r '.HostConfig.PublishAllPorts') == "true" ] && PUBLISHALL=' -P '
+
+echo docker run $BINDS $ENV $PUBLISHALL $PORTS $VOLUMES_FROM $LINKS $DNS --name "$NAME" --hostname "$HOSTNAME" $IMAGE
